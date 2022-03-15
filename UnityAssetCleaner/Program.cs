@@ -1,14 +1,26 @@
 ﻿using ICSharpCode.SharpZipLib.Tar;
 using ICSharpCode.SharpZipLib.GZip;
 
-string[] arguments = Environment.GetCommandLineArgs();
-if (arguments.Length != 2)
+string[] arguments = Environment.GetCommandLineArgs().Skip(1).ToArray();
+bool keepScripts = false;
+string filename = "";
+foreach (string arg in arguments)
 {
-    Console.WriteLine("Usage: UnityAssetCleaner [filename]");
+    if (arg.ToLower() == "--keepscripts")
+    {
+        keepScripts = true;
+    }
+    else
+    {
+        filename = arg;
+    }
+}
+if (filename.Length == 0)
+{
+    Console.WriteLine("Usage: UnityAssetCleaner [filename] (--keepScripts)");
     Environment.Exit(0);
 }
 
-string filename = arguments[1];
 if (!File.Exists(filename))
 {
     Console.WriteLine($"'{filename}' doesn't exit");
@@ -82,7 +94,7 @@ List<string> ProcessExtracted(string tempFolder)
         if (File.Exists(Path.Combine(d, "pathname"))) {
             string filepath = File.ReadAllText(Path.Combine(d, "pathname"));
             string extension = Path.GetExtension(filepath);
-            if (extension == ".dll" || extension == ".exe" || extension == ".cs")
+            if (extension == ".dll" || extension == ".exe" || (extension == ".cs" && !keepScripts))
             {
                 deletedFiles.Add(filepath);
                 Directory.Delete(d, true);
@@ -94,10 +106,6 @@ List<string> ProcessExtracted(string tempFolder)
 
 void AddDirectoryFilesToTar(TarArchive tarArchive, string sourceDirectory, bool recurse, bool isRoot)
 {
-
-    // Optionally, write an entry for the directory itself.
-    // Specify false for recursion here if we will add the directory's files individually.
-    //
     TarEntry tarEntry;
 
     if (!isRoot)
@@ -106,8 +114,6 @@ void AddDirectoryFilesToTar(TarArchive tarArchive, string sourceDirectory, bool 
         tarArchive.WriteEntry(tarEntry, false);
     }
 
-    // Write each file to the tar.
-    //
     string[] filenames = Directory.GetFiles(sourceDirectory);
     foreach (string filename in filenames)
     {
